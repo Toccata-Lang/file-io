@@ -19,14 +19,10 @@ void close_file(void *ptr) {
 ")
 
 (defn fopen-read [file-path]
+  (assert (instance? String file-path))
   (inline C Maybe "
     String *arg0Str;
-    if (file_path_0->type == StringType || file_path_0->type == SubStringType)
-      arg0Str = nullTerm(file_path_0);
-    else {
-      fprintf(stderr, \"\\ninvalid type for 'fopen-read'\\n\");
-      abort();
-    }
+    arg0Str = nullTerm(file_path_0);
 
     FILE* fd = fopen(arg0Str->buffer, \"r\");
     dec_and_free((Value *)arg0Str, 1);
@@ -79,14 +75,10 @@ void close_file(void *ptr) {
 "))
 
 (defn fopen-write [file-path]
+  (assert (instance? String file-path))
   (inline C Maybe "
     String *arg0Str;
-    if (file_path_0->type == StringType || file_path_0->type == SubStringType)
-      arg0Str = nullTerm(file_path_0);
-    else {
-      fprintf(stderr, \"\\ninvalid type for 'fopen-write'\\n\");
-      abort();
-    }
+    arg0Str = nullTerm(file_path_0);
 
     FILE* fd = fopen(arg0Str->buffer, \"wb\");
     dec_and_free((Value *)arg0Str, 1);
@@ -103,21 +95,19 @@ void close_file(void *ptr) {
 "))
 
 (defn write* [file-desc str-buffer]
+  (assert (instance? String str-buffer))
   ;; private function. Use 'write' instead
   (inline C Integer "
   char *buffer;
   int64_t len;
 
   fileDescStruct *fileDesc = (fileDescStruct *)((Opaque *)file_desc_0)->ptr;
-  if (str_buffer_1->type == StringType) {
+  if (str_buffer_1->type == StringBufferType) {
     buffer = ((String *)str_buffer_1)->buffer;
     len = ((String *)str_buffer_1)->len;
   } else if (str_buffer_1->type == SubStringType) {
     buffer = ((SubString *)str_buffer_1)->buffer;
     len = ((SubString *)str_buffer_1)->len;
-  } else {
-    fprintf(stderr, \"\\ninvalid type for 'write*'\\n\");
-    abort();
   }
   Value *result = integerValue(fwrite(buffer, 1, len, fileDesc->fd));
   dec_and_free(file_desc_0, 1);
