@@ -95,6 +95,7 @@ void close_file(void *ptr) {
 "))
 
 (defn write* [file-desc str-buffer]
+  (assert (instance? Opaque file-desc))
   (assert (instance? String str-buffer))
   ;; private function. Use 'write' instead
   (inline C Integer "
