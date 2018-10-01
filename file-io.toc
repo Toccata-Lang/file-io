@@ -1,4 +1,8 @@
 
+(add-ns st (git-dependency "https://github.com/Toccata-Lang/stream.git"
+                           "stream.toc"
+                           :sha "8a04d65"))
+
 (inline C "
 
 typedef struct {
@@ -95,7 +99,6 @@ void close_file(void *ptr) {
 "))
 
 (defn write* [file-desc str-buffer]
-  (assert (instance? Opaque file-desc))
   (assert (instance? String str-buffer))
   ;; private function. Use 'write' instead
   (inline C Integer "
@@ -143,9 +146,12 @@ void close_file(void *ptr) {
   (extract [_]
     (read* file-desc))
 
+  Seqable
+  (rest [x]
+    x)
+
   FileProto
-  (close [_] (close* file-desc))
-  )
+  (close [_] (close* file-desc)))
 
 (deftype OutputFile [file-desc path]
   Stringable
@@ -153,8 +159,7 @@ void close_file(void *ptr) {
 
   FileProto
   (write [_ str-buffer] (write* file-desc str-buffer))
-  (close [_] (close* file-desc))
-  )
+  (close [_] (close* file-desc)))
 
 (defn file-out [path]
   (map (fopen-write path)
@@ -180,6 +185,10 @@ void close_file(void *ptr) {
     dec_and_free((Value *)arg0Str, 1);
     return((Value *)strVal);\n"))
 
+(def stdout-agent (agent 0))
 
-;; (defn file-stream [file]
-;;   (st/cache (st/stream file blocking-read identity empty?)))
+(defn stdout [s]
+  (either (empty? s)
+          (let [x (extract s)]
+            (send stdout-agent (fn [_] (pr* x)))
+            (stdout (rest s)))))
