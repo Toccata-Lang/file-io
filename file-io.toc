@@ -185,10 +185,43 @@ void close_file(void *ptr) {
     dec_and_free((Value *)arg0Str, 1);
     return((Value *)strVal);\n"))
 
+(inline C "char stdinBuffer[5005];\n")
+
+(defn reset-stdin []
+  (inline C "
+  stdinBuffer[0] = 0;
+  return(nothing);\n"))
+
+(def nil (reset-stdin))
+
+(defn read-stdin []
+  (inline C String "
+// TODO: Figure out how to have a new type of buffer to avoid extra copy operation
+  if (stdinBuffer[0] == 0) {
+    fgets(stdinBuffer, 5000, stdin);
+    int bytesRead = strlen(stdinBuffer);
+    if (bytesRead > 0)
+      stdinBuffer[bytesRead - 1] = 0;
+  }
+  return(stringValue(stdinBuffer));
+"))
+
+(def stdin
+  (st/StreamValue nothing
+                  (fn [_]
+                    (maybe (read-stdin)))
+                  (fn [_]
+                    (reset-stdin)
+                    nothing)
+                  (fn [_] nothing)))
+
 (def stdout-agent (agent 0))
 
 (defn stdout [s]
-  (either (empty? s)
-          (let [x (extract s)]
-            (send stdout-agent (fn [_] (pr* x)))
-            (stdout (rest s)))))
+  (or (map (instance? String s) (fn [x]
+                                  (send stdout-agent (fn [_] (pr* x)))))
+      (empty? s)
+      (let [x (extract s)]
+        (send stdout-agent (fn [_] (pr* x)))
+        (stdout (rest s)))))
+
