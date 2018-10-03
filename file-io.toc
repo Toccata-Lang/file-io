@@ -147,8 +147,19 @@ void close_file(void *ptr) {
     (read* file-desc))
 
   Seqable
+  (first [x]
+    (either (and (empty? x)
+                 (maybe nothing))
+            (extract x)))
+
   (rest [x]
     x)
+
+  st/AsStream
+  (st/stream [file-desc]
+    (st/state-stream (InputFile file-desc path)
+                     (fn [file]
+                       [(extract file) file])))
 
   FileProto
   (close [_] (close* file-desc)))
@@ -170,6 +181,14 @@ void close_file(void *ptr) {
   (map (fopen-read path)
        (fn [file-desc]
          (InputFile file-desc path))))
+
+(defn file-sink [s path]
+  (map (file-out path)
+       (fn [out-file]
+         (st/sink s (fn [x]
+                      (either (and (instance? st/StreamEnd x)
+                                   (maybe (close out-file)))
+                              (write out-file x)))))))
 
 (defn slurp [fileName]
   (inline C String
@@ -207,21 +226,16 @@ void close_file(void *ptr) {
 "))
 
 (def stdin
-  (st/StreamValue nothing
-                  (fn [_]
-                    (maybe (read-stdin)))
-                  (fn [_]
-                    (reset-stdin)
-                    nothing)
-                  (fn [_] nothing)))
+  (st/Stream nothing
+             (fn [_]
+               (maybe (read-stdin)))
+             (fn [_]
+               (reset-stdin)
+               nothing)
+             (fn [_] nothing)))
 
 (def stdout-agent (agent 0))
 
 (defn stdout [s]
-  (or (map (instance? String s) (fn [x]
-                                  (send stdout-agent (fn [_] (pr* x)))))
-      (empty? s)
-      (let [x (extract s)]
-        (send stdout-agent (fn [_] (pr* x)))
-        (stdout (rest s)))))
-
+  (st/sink s (fn [x]
+               (send stdout-agent (fn [_] (pr* x))))))
