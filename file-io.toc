@@ -1,7 +1,7 @@
 
 (add-ns st (git-dependency "https://github.com/Toccata-Lang/stream.git"
                            "stream.toc"
-                           :sha "8a04d65"))
+                           :sha "af43750"))
 
 (inline C "
 
@@ -157,9 +157,7 @@ void close_file(void *ptr) {
 
   st/AsStream
   (st/stream [file-desc]
-    (st/state-stream (InputFile file-desc path)
-                     (fn [file]
-                       [(extract file) file])))
+    (st/stream (lazy-list (InputFile file-desc path))))
 
   FileProto
   (close [_] (close* file-desc)))
