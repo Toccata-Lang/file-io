@@ -1,7 +1,7 @@
 
 (add-ns st (git-dependency "https://github.com/Toccata-Lang/stream.git"
                            "stream.toc"
-                           :sha "af43750"))
+                           :sha "c778079"))
 
 (inline C "
 
@@ -20,6 +20,14 @@ void close_file(void *ptr) {
   __atomic_fetch_add(&free_count, 1, __ATOMIC_ACQ_REL);
 #endif
 }
+
+Value *makeFileStruct(FILE *fd) {
+  fileDescStruct *fdStruct = (fileDescStruct *)my_malloc(sizeof(fileDescStruct));
+  fdStruct->fd = fd;
+  fdStruct->open = 1;
+  Value *opaque = opaqueValue(fdStruct, close_file);
+  return(opaque);
+}
 ")
 
 (defn fopen-read [file-path]
@@ -34,10 +42,7 @@ void close_file(void *ptr) {
       return(nothing);
     } else {
       fseek(fd, 0, SEEK_SET);
-      fileDescStruct *fdStruct = (fileDescStruct *)my_malloc(sizeof(fileDescStruct));
-      fdStruct->fd = fd;
-      fdStruct->open = 1;
-      Value *opaque = opaqueValue(fdStruct, close_file);
+      Value *opaque = makeFileStruct(fd);
       Value *mo = maybe((List *)0, (Value *)0, opaque);
       return(mo);
     }
@@ -135,6 +140,8 @@ void close_file(void *ptr) {
   (close [_]))
 
 (deftype InputFile [file-desc path]
+  (assert (instance? Opaque file-desc))
+
   Stringable
   (string-list [_] (list "<InputFile " path ">"))
 
@@ -156,11 +163,12 @@ void close_file(void *ptr) {
     x)
 
   st/AsStream
-  (st/stream [file-desc]
-    (st/stream (lazy-list (InputFile file-desc path))))
+  (st/stream [fd]
+    (st/stream (lazy-list fd)))
 
   FileProto
-  (close [_] (close* file-desc)))
+  (close [_]
+    (close* file-desc)))
 
 (deftype OutputFile [file-desc path]
   Stringable
@@ -192,7 +200,12 @@ void close_file(void *ptr) {
   (inline C String
    "String *arg0Str = nullTerm(fileName_0);
 
-    FILE *file = fopen(arg0Str->buffer, \"r\");
+  FILE *file = fopen(arg0Str->buffer, \"r\");
+  if (file == NULL) {
+    dec_and_free((Value *)arg0Str, 1);
+    String *strVal = malloc_string(0);
+    return((Value *)strVal);
+  } else {
     fseek(file, 0, SEEK_END);
     int64_t buffSize = ftell(file);
     fseek(file, 0, SEEK_SET);
@@ -200,7 +213,8 @@ void close_file(void *ptr) {
     fread(strVal->buffer, 1, buffSize, file);
     fclose(file);
     dec_and_free((Value *)arg0Str, 1);
-    return((Value *)strVal);\n"))
+    return((Value *)strVal);
+  }\n"))
 
 (inline C "char stdinBuffer[5005];\n")
 
@@ -236,4 +250,5 @@ void close_file(void *ptr) {
 
 (defn stdout [s]
   (st/sink s (fn [x]
-               (send stdout-agent (fn [_] (pr* x))))))
+               (or (instance? st/StreamEnd x)
+                   (send stdout-agent (fn [_] (pr* x)))))))
