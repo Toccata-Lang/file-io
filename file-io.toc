@@ -223,7 +223,7 @@ Value *makeFileStruct(FILE *fd) {
   stdinBuffer[0] = 0;
   return(nothing);\n"))
 
-(def nil (reset-stdin))
+(def _ (reset-stdin))
 
 (defn read-stdin []
   (inline C String "
@@ -246,9 +246,8 @@ Value *makeFileStruct(FILE *fd) {
                nothing)
              (fn [_] nothing)))
 
-(def stdout-agent (agent 0))
-
 (defn stdout [s]
-  (st/sink s (fn [x]
-               (or (instance? st/StreamEnd x)
-                   (send stdout-agent (fn [_] (pr* x)))))))
+  (let [stdout-agent (agent 0)]
+    (st/sink s (fn [x]
+                 (or (instance? st/StreamEnd x)
+                     (send stdout-agent (fn [_] (pr* x))))))))
