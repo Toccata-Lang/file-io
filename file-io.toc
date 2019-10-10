@@ -246,8 +246,20 @@ Value *makeFileStruct(FILE *fd) {
                nothing)
              (fn [_] nothing)))
 
+(defprotocol SendStr
+  (send-str [x agnt]))
+
+(extend-type String
+  SendStr
+  (send-str [s agnt]
+    (send agnt (fn [_] (pr* s)))))
+
+(extend-type st/StreamEnd
+  SendStr
+  (send-str [x _]
+    (str x)))
+
 (defn stdout [s]
   (let [stdout-agent (agent 0)]
     (st/sink s (fn [x]
-                 (or (instance? st/StreamEnd x)
-                     (send stdout-agent (fn [_] (pr* x))))))))
+                 (maybe (send-str x stdout-agent))))))
