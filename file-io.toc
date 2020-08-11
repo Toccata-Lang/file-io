@@ -43,7 +43,7 @@ Value *makeFileStruct(FILE *fd) {
     } else {
       fseek(fd, 0, SEEK_SET);
       Value *opaque = makeFileStruct(fd);
-      Value *mo = maybe((List *)0, (Value *)0, opaque);
+      Value *mo = maybe((Vector *)0, (Value *)0, opaque);
       return(mo);
     }
 "))
@@ -78,7 +78,7 @@ Value *makeFileStruct(FILE *fd) {
   if (!feof(fileDesc->fd)) {
     return(nothing);
   } else {
-    Value *mv = maybe((List *)0, (Value *)0, (Value *)nothing);
+    Value *mv = maybe((Vector *)0, (Value *)0, (Value *)nothing);
     return(mv);
   }
 "))
@@ -98,7 +98,7 @@ Value *makeFileStruct(FILE *fd) {
       fdStruct->open = 1;
       fdStruct->fd = fd;
       Value *opaque = opaqueValue(fdStruct, close_file);
-      Value *mo = maybe((List *)0, (Value *)0, opaque);
+      Value *mo = maybe((Vector *)0, (Value *)0, opaque);
       return(mo);
     }
 "))
@@ -155,9 +155,9 @@ Value *makeFileStruct(FILE *fd) {
 
   Seqable
   (first [x]
-    (either (and (empty? x)
-                 (maybe nothing))
-            (extract x)))
+    (or (and (empty? x)
+             (maybe nothing))
+        (maybe (extract x))))
 
   (rest [x]
     x)
