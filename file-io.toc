@@ -1,7 +1,7 @@
 
 (add-ns st (git-dependency "https://github.com/Toccata-Lang/stream.git"
                            "stream.toc"
-                           :sha "c778079"))
+                           :sha "4aa15f9"))
 
 (inline C "
 
@@ -32,7 +32,8 @@ Value *makeFileStruct(FILE *fd) {
 
 (defn fopen-read [file-path]
   (assert (instance? String file-path))
-  (inline C Maybe "
+
+  (inline C (maybe-of Opaque) "
     String *arg0Str;
     arg0Str = nullTerm(file_path_0);
 
@@ -49,6 +50,8 @@ Value *makeFileStruct(FILE *fd) {
 "))
 
 (defn read* [fileDesc]
+  (assert (instance? Opaque fileDesc))
+
   ;; private function. Use 'blocking-read' instead
   (inline C String "
   fileDescStruct *fileDesc = (fileDescStruct *)((Opaque *)fileDesc_0)->ptr;
@@ -72,6 +75,8 @@ Value *makeFileStruct(FILE *fd) {
 "))
 
 (defn eof? [fileDesc]
+  (assert (instance? Opaque fileDesc))
+
   (inline C Maybe "
   fileDescStruct *fileDesc = (fileDescStruct *)((Opaque *)fileDesc_0)->ptr;
   dec_and_free(fileDesc_0, 1);
@@ -85,7 +90,8 @@ Value *makeFileStruct(FILE *fd) {
 
 (defn fopen-write [file-path]
   (assert (instance? String file-path))
-  (inline C Maybe "
+
+  (inline C (maybe-of Opaque) "
     String *arg0Str;
     arg0Str = nullTerm(file_path_0);
 
@@ -104,7 +110,9 @@ Value *makeFileStruct(FILE *fd) {
 "))
 
 (defn write* [file-desc str-buffer]
+  (assert (instance? Opaque file-desc))
   (assert (instance? String str-buffer))
+
   ;; private function. Use 'write' instead
   (inline C Integer "
   char *buffer;
@@ -125,6 +133,8 @@ Value *makeFileStruct(FILE *fd) {
 "))
 
 (defn close* [file-desc]
+  (assert (instance? Opaque file-desc))
+
   ;; private function. Use 'close' instead
   (inline C Integer "
   fileDescStruct *fileDesc = (fileDescStruct *)((Opaque *)file_desc_0)->ptr;
@@ -197,6 +207,8 @@ Value *makeFileStruct(FILE *fd) {
                               (write out-file x)))))))
 
 (defn slurp [fileName]
+  (assert (instance? String fileName))
+
   (inline C String
    "String *arg0Str = nullTerm(fileName_0);
 
@@ -219,7 +231,7 @@ Value *makeFileStruct(FILE *fd) {
 (inline C "char stdinBuffer[5005];\n")
 
 (defn reset-stdin []
-  (inline C "
+  (inline C Maybe "
   stdinBuffer[0] = 0;
   return(nothing);\n"))
 
